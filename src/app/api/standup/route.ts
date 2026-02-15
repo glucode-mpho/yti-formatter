@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
 
-import { formatStandup, normalizeSections, parseModelPayload, toMarkdown } from "@/lib/standup";
+import { formatStandup, normalizeSections, parseModelEnvelope, toMarkdown } from "@/lib/standup";
 import { saveStandupEntry } from "@/lib/storage";
 import { StandupEntry } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
+const DEFAULT_MODEL = "gemini-2.0-flash";
+const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
 
 type GeminiPart = {
   text?: string;
@@ -55,21 +57,6 @@ function collectText(response: GeminiResponse): string {
   return parts.map((part) => part.text ?? "").join("").trim();
 }
 
-function parseRawTranscript(rawJsonText: string, fallbackText: string): string {
-  if (!rawJsonText.trim()) {
-    return fallbackText;
-  }
-  try {
-    const parsed = JSON.parse(rawJsonText) as { rawTranscript?: unknown };
-    if (typeof parsed.rawTranscript === "string" && parsed.rawTranscript.trim().length > 0) {
-      return parsed.rawTranscript.trim();
-    }
-  } catch {
-    return fallbackText;
-  }
-  return fallbackText;
-}
-
 export async function POST(request: Request): Promise<Response> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -86,8 +73,18 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const audioBuffer = Buffer.from(await file.arrayBuffer());
+    if (audioBuffer.byteLength === 0) {
+      return Response.json({ error: "Audio file is empty." }, { status: 400 });
+    }
+    if (audioBuffer.byteLength > MAX_AUDIO_BYTES) {
+      return Response.json(
+        { error: `Audio file is too large. Max supported size is ${MAX_AUDIO_BYTES / (1024 * 1024)}MB.` },
+        { status: 413 },
+      );
+    }
+
     const mimeType = file.type || "audio/webm";
-    const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+    const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
 
     const modelResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -131,9 +128,9 @@ export async function POST(request: Request): Promise<Response> {
     const payload = (await modelResponse.json()) as GeminiResponse;
     const rawModelText = collectText(payload);
 
-    const modelSections = parseModelPayload(rawModelText);
-    const rawTranscript = parseRawTranscript(rawModelText, "No speech detected.");
-    const sections = normalizeSections(modelSections, rawTranscript);
+    const modelEnvelope = parseModelEnvelope(rawModelText);
+    const rawTranscript = modelEnvelope.rawTranscript ?? "No speech detected.";
+    const sections = normalizeSections(modelEnvelope.sections, rawTranscript);
     const formattedText = formatStandup(displayName, sections);
 
     const dateISO = getDateISO();

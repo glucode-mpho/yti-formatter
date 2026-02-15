@@ -1,81 +1,23 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  fileExtensionForAudioBlob,
+  pickRecordingMimeType,
+  readableMicrophoneError,
+  RecorderEngine,
+  toWavBlob,
+} from "@/lib/audio";
 import { StandupEntry } from "@/lib/types";
 
 type Phase = "idle" | "recording" | "processing" | "done" | "error";
-type RecorderEngine = "none" | "media-recorder" | "web-audio";
 
 function secondsToClock(value: number): string {
   const minutes = Math.floor(value / 60);
   const seconds = value % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
-function pickMimeType(): string {
-  const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
-  for (const candidate of candidates) {
-    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(candidate)) {
-      return candidate;
-    }
-  }
-  return "";
-}
-
-function toWavBlob(chunks: Float32Array[], sampleRate: number): Blob {
-  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const wavBuffer = new ArrayBuffer(44 + totalLength * 2);
-  const view = new DataView(wavBuffer);
-
-  writeAscii(view, 0, "RIFF");
-  view.setUint32(4, 36 + totalLength * 2, true);
-  writeAscii(view, 8, "WAVE");
-  writeAscii(view, 12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeAscii(view, 36, "data");
-  view.setUint32(40, totalLength * 2, true);
-
-  let offset = 44;
-  for (const chunk of chunks) {
-    for (let i = 0; i < chunk.length; i += 1) {
-      const sample = Math.max(-1, Math.min(1, chunk[i]));
-      view.setInt16(offset, sample < 0 ? sample * 32768 : sample * 32767, true);
-      offset += 2;
-    }
-  }
-
-  return new Blob([wavBuffer], { type: "audio/wav" });
-}
-
-function writeAscii(view: DataView, offset: number, value: string) {
-  for (let i = 0; i < value.length; i += 1) {
-    view.setUint8(offset + i, value.charCodeAt(i));
-  }
-}
-
-function readableMicError(error: unknown): string {
-  if (error instanceof DOMException) {
-    if (error.name === "NotAllowedError" || error.name === "SecurityError") {
-      return "Microphone access denied. Allow mic permission in browser site settings.";
-    }
-    if (error.name === "NotFoundError") {
-      return "No microphone was found on this device.";
-    }
-    if (error.name === "NotReadableError" || error.name === "AbortError") {
-      return "Microphone is busy or blocked by another app.";
-    }
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return "Microphone start failed.";
 }
 
 export function YtiRecorder() {
@@ -232,7 +174,7 @@ export function YtiRecorder() {
 
       if (typeof MediaRecorder !== "undefined") {
         try {
-          const mimeType = pickMimeType();
+          const mimeType = pickRecordingMimeType();
           const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
           recorderRef.current = recorder;
           recorderEngineRef.current = "media-recorder";
@@ -282,7 +224,7 @@ export function YtiRecorder() {
       );
     } catch (error) {
       setPhase("error");
-      setStatusText(readableMicError(error));
+      setStatusText(readableMicrophoneError(error));
       recorderEngineRef.current = "none";
       recorderRef.current = null;
       cleanupAudioGraph();
@@ -329,8 +271,7 @@ export function YtiRecorder() {
 
     try {
       const formData = new FormData();
-      const extension =
-        blob.type.includes("wav") ? "wav" : blob.type.includes("mp4") ? "m4a" : "webm";
+      const extension = fileExtensionForAudioBlob(blob);
       formData.append("audio", blob, `standup-${Date.now()}.${extension}`);
       formData.append("displayName", displayName);
 
@@ -394,6 +335,10 @@ export function YtiRecorder() {
 
       <header className="hero reveal delay-1">
         <p className="kicker">Gemini-Powered Daily Standup</p>
+        <nav className="hero-nav" aria-label="Primary">
+          <Link href="/">Recorder</Link>
+          <Link href="/about">About</Link>
+        </nav>
         <h1>YTI Voice Recorder</h1>
         <p className="subhead">Speak naturally. Get a clean Yesterday / Today / Impediments update instantly.</p>
       </header>

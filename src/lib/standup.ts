@@ -129,28 +129,31 @@ function toBullets(items: string[]): string[] {
 }
 
 export function parseModelPayload(raw: string): Partial<StandupSections> {
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    return {};
+  return parseModelEnvelope(raw).sections;
+}
+
+export function parseModelEnvelope(raw: string): {
+  rawTranscript: string | null;
+  sections: Partial<StandupSections>;
+} {
+  const parsed = parseModelObject(raw);
+  if (!parsed) {
+    return { rawTranscript: null, sections: {} };
   }
 
-  try {
-    const parsed = JSON.parse(trimmed) as {
-      yesterday?: unknown;
-      today?: unknown;
-      impediments?: unknown;
-      y?: unknown;
-      t?: unknown;
-      i?: unknown;
-    };
-    return {
+  const rawTranscript =
+    typeof parsed.rawTranscript === "string" && parsed.rawTranscript.trim().length > 0
+      ? parsed.rawTranscript.trim()
+      : null;
+
+  return {
+    rawTranscript,
+    sections: {
       yesterday: parseArray(parsed.yesterday ?? parsed.y),
       today: parseArray(parsed.today ?? parsed.t),
       impediments: parseArray(parsed.impediments ?? parsed.i),
-    };
-  } catch {
-    return {};
-  }
+    },
+  };
 }
 
 function parseArray(value: unknown): string[] {
@@ -160,3 +163,37 @@ function parseArray(value: unknown): string[] {
   return value.map((item) => String(item)).filter((item) => item.trim().length > 0);
 }
 
+function parseModelObject(raw: string): Record<string, unknown> | null {
+  const direct = parseObject(raw);
+  if (direct) {
+    return direct;
+  }
+
+  const fencedMatch = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (!fencedMatch?.[1]) {
+    return null;
+  }
+
+  return parseObject(fencedMatch[1]);
+}
+
+function parseObject(raw: string): Record<string, unknown> | null {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (isRecord(parsed)) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}

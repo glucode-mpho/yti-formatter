@@ -3,11 +3,28 @@
   "version": "1.0.0",
   "description": "YTI Voice Recorder in Next.js with Gemini",
   "private": true,
+  "author": "Mpho Ndlela",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/glucode-mpho/yti-formatter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/glucode-mpho/yti-formatter/issues"
+  },
+  "homepage": "https://github.com/glucode-mpho/yti-formatter#readme",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "packageManager": "npm@11.6.2",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --max-warnings=0"
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint && npm run typecheck && npm run build"
   },
   "keywords": [
     "nextjs",
@@ -15,8 +32,6 @@
     "standup",
     "yti"
   ],
-  "author": "",
-  "license": "MIT",
   "dependencies": {
     "next": "^16.1.6",
     "react": "^19.2.4",

@@ -1,5 +1,3 @@
-export type SectionName = "yesterday" | "today" | "impediments";
-
 export type StandupSections = {
   yesterday: string[];
   today: string[];

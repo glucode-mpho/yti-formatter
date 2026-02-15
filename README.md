@@ -1,29 +1,90 @@
 # YTI Voice Recorder
 
-A Next.js app that records your standup voice note and converts it into clean Y/T/I format using Gemini.
+[![Test](https://github.com/glucode-mpho/yti-formatter/actions/workflows/test.yml/badge.svg)](https://github.com/glucode-mpho/yti-formatter/actions/workflows/test.yml)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
 
-## Stack
+Voice-driven standup assistant for developers.  
+Record once, then get a clean **Yesterday / Today / Impediments** update, saved to markdown and local history.
 
-- Next.js 16 + TypeScript
-- Gemini API (server-side route)
-- Browser audio recording (MediaRecorder with Web Audio fallback)
-- Local markdown/history persistence
+## About
 
-## Setup
+YTI Voice Recorder is designed for low-friction daily updates:
 
-1. Install dependencies:
+- Fast microphone capture in browser
+- Gemini-powered transcript structuring
+- Bullet cleanup and normalization
+- Local persistence for history and markdown exports
+
+## Features
+
+- Microphone recording with dual engine fallback:
+  - `MediaRecorder` (primary)
+  - `Web Audio` PCM to WAV (fallback)
+- Gemini JSON prompting for structured Y/T/I
+- Local file outputs:
+  - `ytis/YYYY-MM-DD_yti.md`
+  - `data/history.json`
+- Clipboard and markdown download support
+- Polished, responsive UI
+
+## Architecture (UML)
+
+```mermaid
+flowchart LR
+  U["User"] --> UI["Next.js Client UI (Recorder)"]
+  UI --> API["POST /api/standup"]
+  API --> G["Gemini API"]
+  API --> N["Normalization Layer"]
+  N --> FS1["ytis/*.md"]
+  N --> FS2["data/history.json"]
+  UI --> H["GET /api/history"]
+  H --> FS2
+```
+
+```mermaid
+sequenceDiagram
+  participant Dev as Developer
+  participant UI as Browser UI
+  participant API as Next.js API
+  participant GM as Gemini
+  participant FS as Local Storage
+
+  Dev->>UI: Start recording
+  UI->>UI: Capture audio
+  Dev->>UI: Stop recording
+  UI->>API: Upload audio blob
+  API->>GM: generateContent(audio + prompt)
+  GM-->>API: Structured JSON
+  API->>API: Normalize sections and bullets
+  API->>FS: Save markdown + history
+  API-->>UI: Return formatted standup
+  UI-->>Dev: Display, copy, download
+```
+
+## Tech Stack
+
+- Next.js 16 (App Router)
+- TypeScript
+- ESLint
+- GitHub Actions
+- Gemini API (server route)
+
+## Local Setup
+
+### 1. Install
 
 ```bash
 npm install
 ```
 
-2. Create env file:
+### 2. Configure environment
 
 ```bash
 cp .env.local.example .env.local
 ```
 
-3. Add your key in `.env.local`:
+Set:
 
 ```bash
 GEMINI_API_KEY=your_key_here
@@ -31,26 +92,50 @@ GEMINI_MODEL=gemini-2.0-flash
 DEFAULT_STANDUP_NAME=Your Name
 ```
 
-## Run
+### 3. Run
 
 ```bash
 npm run dev
 ```
 
-Open `http://localhost:3000` and allow microphone access.
+Open [http://localhost:3000](http://localhost:3000), allow microphone access, and record.
 
 ## Scripts
 
-- `npm run dev` - start local development server
-- `npm run lint` - run ESLint
-- `npm run build` - production build check
-- `npm run start` - run production server
+- `npm run dev`: start development server
+- `npm run lint`: lint source files
+- `npm run typecheck`: run TypeScript checks
+- `npm run build`: production build
+- `npm run check`: lint + typecheck + build
+- `npm run start`: run production server
 
-## Output
+## Project Structure
 
-- Markdown files: `ytis/YYYY-MM-DD_yti.md`
-- Local history: `data/history.json`
+```text
+src/
+  app/
+    api/
+      history/route.ts
+      standup/route.ts
+    about/page.tsx
+    layout.tsx
+    page.tsx
+  components/
+    yti-recorder.tsx
+  lib/
+    audio.ts
+    standup.ts
+    storage.ts
+    types.ts
+```
 
 ## CI
 
-GitHub Actions workflow is defined in `.github/workflows/test.yml` and runs lint + build on push and pull requests.
+Workflow: `.github/workflows/test.yml`
+
+Runs on push, pull request, and manual dispatch:
+
+- install (`npm ci`)
+- lint
+- typecheck
+- build

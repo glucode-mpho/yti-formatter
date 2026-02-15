@@ -20,7 +20,7 @@ async function readAllHistory(): Promise<StandupEntry[]> {
     if (!Array.isArray(parsed)) {
       return [];
     }
-    return parsed as StandupEntry[];
+    return parsed.filter(isStandupEntry);
   } catch {
     return [];
   }
@@ -42,4 +42,24 @@ export async function saveStandupEntry(entry: StandupEntry): Promise<void> {
 export async function getRecentStandups(limit = 7): Promise<StandupEntry[]> {
   const all = await readAllHistory();
   return all.slice(0, limit);
+}
+
+function isStandupEntry(value: unknown): value is StandupEntry {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<StandupEntry>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.dateISO === "string" &&
+    typeof candidate.displayName === "string" &&
+    typeof candidate.rawTranscript === "string" &&
+    typeof candidate.formattedText === "string" &&
+    typeof candidate.markdownContent === "string" &&
+    typeof candidate.markdownFileName === "string" &&
+    typeof candidate.createdAt === "string" &&
+    typeof candidate.sections === "object" &&
+    candidate.sections !== null
+  );
 }

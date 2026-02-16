@@ -8,6 +8,7 @@ export default function AboutPage() {
         <nav className="hero-nav" aria-label="Primary">
           <Link href="/">Recorder</Link>
           <Link href="/about">About</Link>
+          <Link href="/how-it-works">How It Works</Link>
         </nav>
         <h1>How YTI Voice Recorder Works</h1>
         <p className="subhead">

@@ -5,9 +5,8 @@ import { saveStandupEntry } from "@/lib/storage";
 import { StandupEntry } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 60;
 const DEFAULT_MODEL = "gemini-2.0-flash";
-const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
 
 type GeminiPart = {
   text?: string;
@@ -21,9 +20,10 @@ type GeminiResponse = {
   }>;
 };
 
-const STANDUP_PROMPT = `
+const TEXT_STANDUP_PROMPT = `
 You are formatting a developer daily standup.
-Analyze the audio and produce JSON only with these keys:
+The user has typed a casual, conversational description of their work.
+Analyze the text and produce JSON only with these keys:
 {
   "rawTranscript": "string",
   "yesterday": ["string"],
@@ -32,6 +32,7 @@ Analyze the audio and produce JSON only with these keys:
 }
 
 Rules:
+- "rawTranscript" should be the original text the user provided.
 - Keep output concise and action oriented.
 - Remove filler words.
 - If no impediments are mentioned, set impediments to ["None"].
@@ -44,8 +45,8 @@ function getDateISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function getDisplayName(input: FormDataEntryValue | null): string {
-  const raw = (typeof input === "string" ? input : "").trim();
+function getDisplayName(input: string | undefined): string {
+  const raw = (input ?? "").trim();
   if (raw.length > 0) {
     return raw;
   }
@@ -75,6 +76,11 @@ function getApiKey(request: Request): string | null {
   return envKey || null;
 }
 
+type TextStandupBody = {
+  text?: string;
+  displayName?: string;
+};
+
 export async function POST(request: Request): Promise<Response> {
   const apiKey = getApiKey(request);
   if (!apiKey) {
@@ -88,26 +94,21 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    const formData = await request.formData();
-    const file = formData.get("audio");
-    const displayName = getDisplayName(formData.get("displayName"));
+    const body = (await request.json()) as TextStandupBody;
+    const userText = (body.text ?? "").trim();
+    const displayName = getDisplayName(body.displayName);
 
-    if (!(file instanceof File)) {
-      return Response.json({ error: "No audio file received." }, { status: 400 });
+    if (!userText) {
+      return Response.json({ error: "No text provided." }, { status: 400 });
     }
 
-    const audioBuffer = Buffer.from(await file.arrayBuffer());
-    if (audioBuffer.byteLength === 0) {
-      return Response.json({ error: "Audio file is empty." }, { status: 400 });
-    }
-    if (audioBuffer.byteLength > MAX_AUDIO_BYTES) {
+    if (userText.length > 10_000) {
       return Response.json(
-        { error: `Audio file is too large. Max supported size is ${MAX_AUDIO_BYTES / (1024 * 1024)}MB.` },
+        { error: "Text is too long. Please keep it under 10,000 characters." },
         { status: 413 },
       );
     }
 
-    const mimeType = file.type || "audio/webm";
     const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
 
     const modelResponse = await fetch(
@@ -123,13 +124,8 @@ export async function POST(request: Request): Promise<Response> {
             {
               role: "user",
               parts: [
-                { text: STANDUP_PROMPT },
-                {
-                  inlineData: {
-                    mimeType,
-                    data: audioBuffer.toString("base64"),
-                  },
-                },
+                { text: TEXT_STANDUP_PROMPT },
+                { text: userText },
               ],
             },
           ],
@@ -153,7 +149,7 @@ export async function POST(request: Request): Promise<Response> {
     const rawModelText = collectText(payload);
 
     const modelEnvelope = parseModelEnvelope(rawModelText);
-    const rawTranscript = modelEnvelope.rawTranscript ?? "No speech detected.";
+    const rawTranscript = modelEnvelope.rawTranscript ?? userText;
     const sections = normalizeSections(modelEnvelope.sections, rawTranscript);
     const formattedText = formatStandup(displayName, sections);
 

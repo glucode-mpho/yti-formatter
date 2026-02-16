@@ -60,13 +60,13 @@ export function fileExtensionForAudioBlob(blob: Blob): "wav" | "m4a" | "webm" {
 export function readableMicrophoneError(error: unknown): string {
   if (error instanceof DOMException) {
     if (error.name === "NotAllowedError" || error.name === "SecurityError") {
-      return "Microphone access denied. Allow microphone permission in browser site settings.";
+      return "Microphone access denied by browser or OS. Check site permissions and system microphone privacy settings.";
     }
     if (error.name === "NotFoundError") {
       return "No microphone was found on this device.";
     }
     if (error.name === "NotReadableError" || error.name === "AbortError") {
-      return "Microphone is busy or blocked by another app.";
+      return "Microphone is busy or blocked by another app (for example Zoom/Teams).";
     }
   }
 

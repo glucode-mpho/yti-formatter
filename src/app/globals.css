@@ -181,6 +181,25 @@ body {
   outline-offset: 1px;
 }
 
+.api-key-summary {
+  margin-top: 0.72rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.api-key-summary .muted {
+  margin: 0;
+}
+
+.api-key-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .record-row {
   margin-top: 1rem;
   display: flex;
@@ -361,6 +380,81 @@ body {
 .empty {
   margin: 0;
   color: var(--muted-ink);
+}
+
+.api-key-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(9, 20, 23, 0.58);
+  backdrop-filter: blur(7px);
+}
+
+.api-key-modal {
+  width: min(520px, 100%);
+  border: 1px solid rgba(18, 33, 36, 0.2);
+  border-radius: 20px;
+  padding: 1.2rem;
+  background: rgba(248, 245, 238, 0.97);
+  box-shadow: 0 26px 52px rgba(11, 24, 27, 0.4);
+}
+
+.api-key-modal h2 {
+  margin: 0.4rem 0 0.55rem;
+  font-size: clamp(1.45rem, 4.5vw, 2rem);
+  letter-spacing: -0.02em;
+}
+
+.api-key-copy {
+  margin: 0 0 0.95rem;
+  color: #2e4950;
+  line-height: 1.42;
+  font-size: 0.95rem;
+}
+
+.api-key-hint,
+.api-key-error {
+  margin: 0.62rem 0 0;
+  font-size: 0.82rem;
+  font-family: var(--font-mono), "Menlo", monospace;
+}
+
+.api-key-hint {
+  color: var(--muted-ink);
+}
+
+.api-key-error {
+  color: #8f2323;
+}
+
+.api-key-actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.62rem;
+}
+
+.modal-button {
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(160deg, var(--accent), var(--accent-strong));
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.56rem 0.95rem;
+}
+
+.modal-button:hover {
+  filter: saturate(1.06);
+}
+
+.modal-button:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
 }
 
 .about-shell .panel {

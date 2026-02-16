@@ -92,6 +92,17 @@ GEMINI_MODEL=gemini-2.0-flash
 DEFAULT_STANDUP_NAME=Your Name
 ```
 
+### API Key Modes
+
+- User key (required in browser UI): when the app opens, users first see a modal that requires a Gemini API key before recording. The client sends it per request as `x-gemini-api-key`.
+- Server key (fallback for server-to-server calls): set `GEMINI_API_KEY` in `.env.local` (or your deployment secret manager) for integrations that call `/api/standup` without a request key.
+- Session behavior: the browser stores the API key in `sessionStorage` only for the current session.
+- Logout behavior: clicking `Logout` clears session data (including API key) and locks the app until a key is entered again.
+
+Security note:
+- Never commit real keys to git.
+- If a real key was previously committed, rotate/revoke it in Google AI Studio immediately.
+
 ### 3. Run
 
 ```bash
@@ -109,6 +120,13 @@ Open [http://localhost:3000](http://localhost:3000), allow microphone access, an
 - `npm run check`: lint + typecheck + build
 - `npm run start`: run production server
 
+## Upcoming Features
+
+- Optional sign up / sign in: create an account only if you want persistent data.
+- Saved API key for account users: keep your Gemini API key tied to your account instead of re-entering it each session.
+- Persistent YTI history for account users: retain and access standup history across sessions and devices.
+- Keep no-account mode: continue using the app without creating an account.
+
 ## Project Structure
 
 ```text
@@ -118,6 +136,7 @@ src/
       history/route.ts
       standup/route.ts
     about/page.tsx
+    how-it-works/page.tsx
     layout.tsx
     page.tsx
   components/
